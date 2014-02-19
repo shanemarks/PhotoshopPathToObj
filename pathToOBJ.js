@@ -6,7 +6,11 @@ function main()
 	try
 	{
       
-        if ( saveFile(PathsToObj (app.activeDocument.pathItems.getByName ( "Work Path" ))))
+        doc = app.activeDocument; //reference to the active document
+        layer = doc.activeLayer; //reference to currently active layer
+
+        
+        if ( saveFile(PathsToObj (doc.pathItems.getByName ( "Work Path" ))))
         {
             alert ("File saved Successfully");
         }
@@ -62,22 +66,52 @@ function PathsToObj (workPath)
     return stream;
 }
 
-function saveFile(txt) //Savee OBJ to disk. this requires the PSD to already be saved. OBJ file gets saved next to PSD.
+function saveFile(txt)                                  //Save OBJ to disk. this requires the PSD to already be saved. OBJ file gets saved next to PSD.
 {
-    var Name = app.activeDocument.name.replace(/\.[^\.]+$/, '');
-    var Ext = decodeURI(app.activeDocument.name).replace(/^.*\./,'');
-    if (Ext.toLowerCase() != 'psd')
-        return false;
+        var Name = app.activeDocument.name.replace(/\.[^\.]+$/, '');
+        var Ext = decodeURI(app.activeDocument.name).replace(/^.*\./,'');
+        if (Ext.toLowerCase() != 'psd')             //Only work with photoshop files
+        {
+            return false;
+        }
+    
+        var Path = app.activeDocument.path;
+        var saveFile = File(Path + "/" + Name +".obj");
 
-    var Path = app.activeDocument.path;
-    var saveFile = File(Path + "/" + Name +".obj");
+        if(saveFile.exists)
+        {
+            saveFile.remove();
+        }
+    
+        saveFile.encoding = "UTF8";
+        saveFile.open("e", "TEXT", "????");
+        saveFile.writeln(txt);
+        saveFile.close();
 
-    if(saveFile.exists)
-        saveFile.remove();
-
-    saveFile.encoding = "UTF8";
-    saveFile.open("e", "TEXT", "????");
-    saveFile.writeln(txt);
-    saveFile.close();
-    return true;
+        return true;
 }
+
+
+function ActiveLayerToWorkPath (layer)  // STILL TO DO
+{
+            SelectTransparency (layer.name);
+}
+
+
+function SelectTransparency( layerName ){  // THIS FUNCTION IS NOT WORKING
+     try{
+          var desc = new ActionDescriptor();
+               var ref = new ActionReference();
+               ref.putEnumerated( charIDToTypeID( "Chnl" ), charIDToTypeID( "Chnl" ), charIDToTypeID( "Trsp" ) );
+               ref.putName( charIDToTypeID( "Lyr " ), layerName );
+          desc.putReference( charIDToTypeID( "null" ), ref );
+               var ref1 = new ActionReference();
+               ref1.putProperty( charIDToTypeID( "Chnl" ), charIDToTypeID( "fsel" ) );
+          desc.putReference( charIDToTypeID( "T   " ), ref1 );
+          executeAction( charIDToTypeID( "setd" ), desc, DialogModes.NO );
+          return true;
+          return true;
+     }catch(e){alert (e);}
+     return false;
+}
+
