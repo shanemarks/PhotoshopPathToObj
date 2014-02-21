@@ -10,7 +10,13 @@
 
 #target Photoshop
 var cachedLength =  0; //variable to start the catched length  the path
+var pointList = new Array ();
+var sampleRate = 350;
+var paddingRadius = 25;
 
+var angleTolerance = 0.1;
+
+var cachedPathData = new Array ();
 main();
 function main()
 {
@@ -27,7 +33,7 @@ function main()
                         doc = app.activeDocument; //reference to the active document
                         layer = doc.activeLayer; //reference to currently active layer
 
-                        SamplePaths (ActiveLayerToWorkPath(layer, 25 ),  100  ,100);
+                        SamplePaths (ActiveLayerToWorkPath(layer)  ,100);
 
 
 
@@ -138,12 +144,12 @@ function saveFile(txt)
 }
 
 
-function ActiveLayerToWorkPath (layer, proximityRadius)  
+function ActiveLayerToWorkPath (layer)  
 {
             app.activeDocument.selection.deselect (); 
             if (SelectTransparency (layer.name))
             {
-                        app.activeDocument.selection.expand (proximityRadius);
+                        app.activeDocument.selection.expand (paddingRadius);
                         app.activeDocument.selection.makeWorkPath();
             }
             return doc.pathItems.getByName ( "Work Path" ).subPathItems;          
@@ -172,7 +178,7 @@ function SelectTransparency( layerName )
             }
 }
 
-function SamplePaths (paths, sampleRate, distanceTolerance)
+function SamplePaths (paths)
 {
 
             var pathsList = new Array (); // store list of points for each path after sampling
@@ -180,90 +186,99 @@ function SamplePaths (paths, sampleRate, distanceTolerance)
 
             var thePath;
             var pathLength = 0;  // length of all paths combined
+            var pc = 0;
             for (var i =0; i<lp;i++)
             {
-                                               pathLength +=CalculatePathLength(paths[i].pathPoints);
-             }
- 
+                        pathLength +=CalculatePathLength(paths[i].pathPoints); // TO DO: Move path segment length calcuation into cachedPathData
+                        cachedPathData[i] = new PathCacheInfo (paths[i].pathPoints);
+                        $.writeln(cachedPathData[i] );
+            }
+    
             for (var i = 0; i < lp; i ++) // iterate through each path group
             {
-                        var pointList  = new Array (); //store list of each point in path after sampling;
+                if (!ContainsPath (i,paths))
+                {
+                       // alert ("running");
+                       pointList  = new Array (); //store list of each point in path after sampling;
                         var c = 0;
                         var length = paths[i].pathPoints.length-1;
                         var point;
                         thePath = paths[i];
+
                         for (var p = 0; p < length; p ++) //iterate through each point on the curve
-                        {
-
-                      
-                        var thePoint = thePath.pathPoints[p]; 
-                        var theNextPoint = thePath.pathPoints[p+1];  //caching these references signfinicately improves running time of script.
-                        ShouldWeInterpolate (thePoint.anchor, thePoint.leftDirection,theNextPoint.rightDirection,theNextPoint.anchor, distanceTolerance, 0.1)
-                        segmentPercent = pathLength / cachedLength;
-                        sample = (1 / sampleRate*segmentPercent);
-                        t =0;
-
-                        while (t < 1)
-                                    {
-                                                
-                                    point = new PathPointInfo;
-                                    point.kind = PointKind.CORNERPOINT;
-
-                                    point.anchor =  CalculateBezierPoint (t, thePoint.anchor, thePoint.leftDirection,theNextPoint.rightDirection,theNextPoint.anchor);
-
-                                    point.leftDirection = point.anchor;
-                                    point.rightDirection = point.anchor;
-
-                            
-                                        pointList[c] = point;
-                                        c++;
-                                    
-                                    t += sample;
-
-
-                                    }   //end while
-                        
+                        {                    
+                                    var thePoint = thePath.pathPoints[p]; 
+                                    var theNextPoint = thePath.pathPoints[p+1];  //caching these references signfinicately improves running time of script.
+                                    c = InterpolatePoints (thePoint, theNextPoint,c,pathLength);
+                   
                         } // end iterate through points
 
-                         var thePoint = thePath.pathPoints[length]; 
-                        var theNextPoint = thePath.pathPoints[0];  //caching these references signfinicately improves running time of script.                point = new PathPointInfo;
-                        point.kind = PointKind.CORNERPOINT;
-                                    
-                         ShouldWeInterpolate (thePoint.anchor, thePoint.leftDirection,theNextPoint.rightDirection,theNextPoint.anchor, distanceTolerance, 0.1)
-                        segmentPercent = pathLength / cachedLength;
-                        sample = (1 / sampleRate*segmentPercent);
-                        t =0;
-
-                        while (t < 1)
-                                    {
-                                                
-                                    point = new PathPointInfo;
-                                    point.kind = PointKind.CORNERPOINT;
-
-                                    point.anchor =  CalculateBezierPoint (t, thePoint.anchor, thePoint.leftDirection,theNextPoint.rightDirection,theNextPoint.anchor);
-
-                                    point.leftDirection = point.anchor;
-                                    point.rightDirection = point.anchor;
-
-                            
-                                  pointList[c] = point;
-                                   c++;
-                                    
-                                    t += sample;
-
-
-                                    }   //end while
-                        
-                        pathsList[i] = new SubPathInfo ();
-                        pathsList[i].operation =ShapeOperation.SHAPEXOR;
-                        pathsList[i].closed = true;
-                        pathsList[i].entireSubPath  = Optimize (pointList);
-
+                       //capture end last point to first point
+                       var thePoint = thePath.pathPoints[length]; 
+                       var theNextPoint = thePath.pathPoints[0];  //caching these references signfinicately improves running time of script.                point = new PathPointInfo;
+                       c = InterpolatePoints (thePoint, theNextPoint,c,pathLength);
+                      
+                        pathsList[pc] = new SubPathInfo ();
+                       
+                       
+                        pathsList[pc].operation =ShapeOperation.SHAPEXOR;
+                        pathsList[pc].closed = true;
+                        pathsList[pc].entireSubPath  =  Optimize(pointList);
+                        pc++;
+                }
             }
-                        
+
             app.activeDocument.pathItems.add ("pathOMatic",pathsList);
 
 
+}
+function ContainsPath ( pathIndex, paths)
+{
+   
+    for (var i = 0; i <  paths.length; i++)
+    {
+        if (i != pathIndex)
+        {
+    
+                var distance = SegmentLength (  cachedPathData [pathIndex].midPoint, cachedPathData[i].midPoint);
+                $.writeln (distance);
+               // $.writteln(Math.abs (cachedPathData[pathIndex].radius - cachedPathData[i].radius);
+            
+                if (    (cachedPathData[pathIndex].bounds[0] >= cachedPathData[i].bounds[0] 
+                &&  cachedPathData[pathIndex].bounds[1] >= cachedPathData[i].bounds[1]
+                && cachedPathData[pathIndex].bounds[2] <= cachedPathData[i].bounds[2] 
+                && cachedPathData[pathIndex].bounds[3] <= cachedPathData[i].bounds[3]))
+                {
+        //         alert ("inside");
+                    return true;
+                }
+        }
+    }
+//alert ("outside");
+    return false;
+}
+function InterpolatePoints (thePoint, theNextPoint,c,pathLength)
+{
+            cachedLength = BezierLength (thePoint.anchor, thePoint.leftDirection,theNextPoint.rightDirection,theNextPoint.anchor);
+            var segmentPercent = pathLength / cachedLength;
+            var sample = (1 / sampleRate*segmentPercent);
+            var  t = 0;
+
+            while (t < 1)
+            {
+                                    
+                        point = new PathPointInfo;
+                        point.kind = PointKind.CORNERPOINT;
+                        point.anchor =  CalculateBezierPoint (t, thePoint.anchor, thePoint.leftDirection,theNextPoint.rightDirection,theNextPoint.anchor);
+                        point.leftDirection = point.anchor;
+                        point.rightDirection = point.anchor;
+                        pointList[c] = point;
+                        c++;                    
+                        t += sample;
+
+
+            }   //end while
+            return c;
 }
 
 function Optimize(pointList)
@@ -278,16 +293,19 @@ function Optimize(pointList)
                        var counter = 1;
                        newList[lc] = pointList[i];
                        var thePoint = pointList[i];
-              
+                       var StartAngle = LineAngle(thePoint.anchor,  pointList[i+counter].anchor);
                        while (!pass)
                        {
+                                   
                                     var theNextPoint =  pointList[i+counter];
-                                    if (i+counter <=length)
+                                    var  theThirdPoint =  pointList[i+counter+1];
+                                    if (i+counter+1 <=length)
                                     {
+                                                var  NextAngle = LineAngle (theNextPoint.anchor, theThirdPoint.anchor);
 
-                                                if (SegmentLength (thePoint.anchor, theNextPoint.anchor) > 30)
+                                                if (Math.abs (StartAngle - NextAngle) >angleTolerance)
                                                 {
-                                         
+               
                                             //     newList[lc] = pointList[i+counter];
                                                  pass = true;
                                                  i += counter-1;
@@ -335,7 +353,7 @@ function CalculateBezierPoint  (t, p0, p1, p2, p3)
 }
 
 
-function ShouldWeInterpolate (p0,p1,p2,p3 , distance,angle)
+/*function ShouldWeInterpolate (p0,p1,p2,p3)
     {
         // length threshold calculation
             cachedLength =   Math.sqrt (Math.pow (p1[0]-p0[0],2) +  Math.pow (p1[1]-p0[1],2))+
@@ -353,7 +371,7 @@ function ShouldWeInterpolate (p0,p1,p2,p3 , distance,angle)
 
             var a =  Math.abs (angle2 - angle1);
 
-            if (cachedLength > distance && a>angle)
+            if (cachedLength > distanceTolerance && a>angleTolerance)
             {
                         return true;
             }
@@ -363,11 +381,18 @@ function ShouldWeInterpolate (p0,p1,p2,p3 , distance,angle)
                         return false;
             }
        
-    }
+    }*/
+
+function BezierLength (p0,p1,p2,p3)
+{
+         return   Math.sqrt (Math.pow (p1[0]-p0[0],2) +  Math.pow (p1[1]-p0[1],2))+
+            Math.sqrt (Math.pow (p2[0]-p1[0],2) +  Math.pow (p2[1]-p1[1],2))+
+            Math.sqrt(Math.pow (p3[0]-p2[0],2) +  Math.pow (p3[1]-p2[1],2));        
+}
 function SegmentLength (p0,p1)
 {
             return Math.sqrt (Math.pow (p1[0]-p0[0],2) +  Math.pow (p1[1]-p0[1],2));
-            }
+}
 function CalculatePathLength (pathPoints)
 {
             var length = 0;
@@ -387,6 +412,12 @@ function CalculatePathLength (pathPoints)
    
 }
 
+function LineAngle (p0, p1)
+{
+        var deltaX = Math.abs (p1[0]-p0[0]);
+        var deltaY = Math.abs (p1[1]-p0[1]);
+        return Math.abs (Math.atan(deltaX/deltaY));
+ }
 function CalculateAngle (p0,p1,p2,p3)
 {
         var deltaX = p1[0]-p0[0];
@@ -398,4 +429,54 @@ function CalculateAngle (p0,p1,p2,p3)
         var angle2 = Math.abs (Math.atan(deltaX/deltaY));
        
         return Math.abs (angle2 - angle1);
+
  }
+
+function PathCacheInfo (pointsList) //function to cache key info about a path
+{
+    this.bounds =CalculateBounds (pointsList);
+     
+    var width = this.bounds[2] - this.bounds [0];  
+    var height = this.bounds [3]  - this.bounds [1];
+    this.midPoint = new Array (this.bounds [0] + (width / 2) , this.bounds [1] + (height /2 )) ;
+    this.radius = 0.5 * Math.sqrt(Math.pow (width,2) + Math.pow (height, 2));
+
+    function CalculateBounds (pointsList)
+    {
+      
+      
+       var bounds = new Array (pointsList[0].anchor[0], pointsList[0].anchor[0], pointsList[0].anchor[1], pointsList[0].anchor[1]);
+       
+
+       for ( var i = 1; i <pointsList.length; i++)
+       {
+
+            if (pointsList[i].anchor[0] < bounds [0]) //minx
+            {
+             
+                bounds[0] = pointsList[i].anchor[0];
+            }
+         
+            if (pointsList[i].anchor[1] < bounds [1]) //
+            {
+                bounds[1] = pointsList[i].anchor[1];
+            }
+        
+           if (pointsList[i].anchor[0] > bounds [2])
+            {
+                bounds[2] = pointsList[i].anchor[0];
+            }       
+        
+           if (pointsList[i].anchor[1] > bounds [3])
+            {
+            
+                bounds[3] = pointsList[i].anchor[1];
+            }             
+    }
+
+    return bounds;
+
+}
+
+
+}
