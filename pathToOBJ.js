@@ -40,7 +40,7 @@ var pointList = new Array ();
 /*
 The maximum amount of samples the script will take over all curves
 */
-var sampleRate = 2000;
+var sampleRate = 350;
 
 /*
 How much padding to add to selection when auto generating paths
@@ -194,8 +194,8 @@ function main()
     var startTypeUnits = app.preferences.typeUnits; 
     var startDisplayDialogs = app.displayDialogs;
     StandardiseUnits ();    //adjust photoshop settings temporarily to make sure they work with the script, as certain functions are unit-dependant.
-    try
-    {
+    //try
+    //{
         CheckState (theState); // Error checking
         doc = app.activeDocument; //reference to the active document
         layer =  doc.activeLayer; //reference to currently active layer
@@ -220,12 +220,12 @@ function main()
             alert ("File failed to save");
         }
 
-    }
+   // }
 
-    catch(e)
-    {
-        alert (e);   
-    }
+    //catch(e)
+ //   {
+  //      alert (e);   
+   // }
     dlg.close ();
     ResetUnits (startRulerUnits, startTypeUnits, startDisplayDialogs);
 
@@ -434,7 +434,6 @@ function SamplePaths (paths)
             pc++;
         }
     }
-
     app.activeDocument.pathItems.add (OUTPUT_PATH_NAME,pathsList);
 
 
