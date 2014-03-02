@@ -50,7 +50,7 @@ var paddingRadius = 25;
 /*
 The difference between segment angles, used in the optimization pass
 */
-var angleTolerance = 0.2;
+var angleTolerance = 0;
 
 /*
 Array holding information about the paths (bounding boxes etc)
@@ -87,13 +87,13 @@ function buildWindow ()
     dlg.panel.sampleRateText = dlg.panel.add ('StaticText',[horiz,vert,horiz+100,vert + 25],"Padding Radius",{name:'paddingRadiusText'});
     horiz +=100;
     dlg.panel.PaddingRadius = dlg.panel.add ('Slider',[horiz,vert-10,horiz+200,vert +15],{name:'Padding Radius'});
-    horiz = 10;
+    //horiz = 10;
 
-    vert +=35;
-    dlg.panel.sampleRateText = dlg.panel.add ('StaticText',[horiz,vert,horiz+100,vert + 25],"Optimization",{name:'OptimizationTresholdText'});
-    horiz +=100;
+   // vert +=35;
+  //  dlg.panel.sampleRateText = dlg.panel.add ('StaticText',[horiz,vert,horiz+100,vert + 25],"Optimization",{name:'OptimizationTresholdText'});
+//    horiz +=100;
 
-    dlg.panel.optimizationThreshold = dlg.panel.add ('Slider',[horiz,vert-10,horiz+200,vert + 15],{name:'Padding Radius'});
+  //  dlg.panel.optimizationThreshold = dlg.panel.add ('Slider',[horiz,vert-10,horiz+200,vert + 15],{name:'Padding Radius'});
 
     horiz = 10;
     vert +=35;
@@ -106,7 +106,7 @@ function buildWindow ()
 
     dlg.panel.merge.value = true;
     dlg.panel.AutoGenerate.value = true;
-    dlg.panel.optimizationThreshold.value = 10;
+    //dlg.panel.optimizationThreshold.value = 10;
     dlg.panel.PaddingRadius.value = 25;
     dlg.panel.SampleRate.value = 10;
 
@@ -180,15 +180,15 @@ function main()
         paddingRadius = 0; 
     }
 
-    if (!isNaN(dlg.panel.optimizationThreshold.value)) 
-    {
-        angleTolerance =angleTolerance * (dlg.panel.optimizationThreshold.value / 100);
-    }   
+   // if (!isNaN(dlg.panel.optimizationThreshold.value)) 
+   // {
+     //   angleTolerance =angleTolerance * (dlg.panel.optimizationThreshold.value / 100);
+   // }   
 
-    else
-    {
-        angleTolerance = 0;
-    }
+  //  else
+    //{
+ //       angleTolerance = 0;
+  //  }
 
     var startRulerUnits =  app.preferences.rulerUnits;
     var startTypeUnits = app.preferences.typeUnits; 
