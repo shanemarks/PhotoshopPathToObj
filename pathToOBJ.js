@@ -194,9 +194,9 @@ function main()
     var startTypeUnits = app.preferences.typeUnits; 
     var startDisplayDialogs = app.displayDialogs;
     StandardiseUnits ();    //adjust photoshop settings temporarily to make sure they work with the script, as certain functions are unit-dependant.
-    //try
-    //{
-        CheckState (theState); // Error checking
+    try
+    {
+       CheckState (theState); // Error checking
         doc = app.activeDocument; //reference to the active document
         layer =  doc.activeLayer; //reference to currently active layer
 
@@ -220,12 +220,12 @@ function main()
             alert ("File failed to save");
         }
 
-   // }
+    }
 
-    //catch(e)
- //   {
-  //      alert (e);   
-   // }
+ catch(e)
+    {
+      alert (e);   
+ }
     dlg.close ();
     ResetUnits (startRulerUnits, startTypeUnits, startDisplayDialogs);
 
